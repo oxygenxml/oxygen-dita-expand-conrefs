@@ -4,8 +4,8 @@ https://www.oxygenxml.com/doc/versions/18.1/ug-editor/topics/packing-and-deployi
 <xt:extensions xmlns:xt="http://www.oxygenxml.com/ns/extension"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.oxygenxml.com/ns/extension http://www.oxygenxml.com/ns/extension/extensions.xsd">
-    <xt:extension xmlns:xt="http://www.oxygenxml.com/ns/extension" id="oxygen-embed-images">
-        <xt:location href="https://github.com/oxygenxml/oxygen-embed-images/archive/master.zip"/>
+    <xt:extension xmlns:xt="http://www.oxygenxml.com/ns/extension" id="oxygen-expand-conrefs-keyrefs">
+        <xt:location href="https://github.com/oxygenxml/oxygen-expand-conrefs-keyrefs/archive/master.zip"/>
         <xt:version>1.0.0</xt:version>
         <xt:oxy_version>19.1+</xt:oxy_version>
         <xt:type>plugin</xt:type>
