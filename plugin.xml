@@ -1,7 +1,7 @@
 <!DOCTYPE plugin PUBLIC "-//Oxygen Plugin" "../plugin.dtd">
 <plugin
- id="oxygen.expand.conrefs.keyrefs"
- name="Oxygen Expand Conrefs and Keyrefs"
+ id="oxygen.dita.expand.conrefs.keyrefs"
+ name="DITA Expand Conrefs and Keyrefs"
  description="Plugin expands all conrefs, keyrefs and conkeyrefs in a DITA topic with the resolved content."
  version="1.0"
  vendor="Syncro Soft"

@@ -10,7 +10,7 @@ https://www.oxygenxml.com/doc/versions/18.1/ug-editor/topics/packing-and-deployi
         <xt:oxy_version>19.1+</xt:oxy_version>
         <xt:type>plugin</xt:type>
         <xt:author>Syncro Soft SRL</xt:author>
-        <xt:name>Expand Conrefs and Keyrefs</xt:name>
+        <xt:name>DITA Expand Conrefs and Keyrefs</xt:name>
         <xt:description><html xmlns="http://www.w3.org/1999/xhtml">
                 <head>
                     <title>Oxygen Expand Conrefs and Keyrefs</title>
