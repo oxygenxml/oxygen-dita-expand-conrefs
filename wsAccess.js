@@ -22,7 +22,7 @@ function applicationStarted(pluginWorkspaceAccess) {
                                     documentController.beginCompoundEdit();
                                 });
                                 // Expand all conrefs/keyrefs from the document.
-                                expandRefs(authorAccess);
+                                expandRefs(authorAccess, 0);
                                 
                                 javax.swing.SwingUtilities.invokeAndWait(function () {
                                     documentController.endCompoundEdit();
@@ -55,9 +55,10 @@ function applicationClosing(pluginWorkspaceAccess) {
 /**
  *
  */
-function expandRefs(authorAccess) {
+function expandRefs(authorAccess, errors) {
     allNodes = authorAccess.getDocumentController().findNodesByXPath("//*[@conref or @conkeyref]", true, true, true);
-    if (allNodes != null) {
+    if (allNodes != null && (allNodes.length > errors)) {
+        var errorCount = 0; 
         for (var i = 0; i < allNodes.length; i++) {
             try {
                 javax.swing.SwingUtilities.invokeAndWait(function () {
@@ -65,7 +66,7 @@ function expandRefs(authorAccess) {
                     var contentNodes = allNodes[i].getContentNodes();
                     for (var j = 0; j < contentNodes.size(); j++) {
                         var currentContentNode = contentNodes.get(j);
-                        if (currentContentNode instanceof Packages.ro.sync.ecss.dom.AuthorErrorNodeImpl) {
+                        if ("#error".equals(currentContentNode.getName())) {
                             isError = true;
                         }
                     }
@@ -73,6 +74,8 @@ function expandRefs(authorAccess) {
                     if (! isError) {
                         authorAccess.getEditorAccess().setCaretPosition(allNodes[i].getStartOffset() + 1);
                         Packages.ro.sync.ecss.dita.DITAAccess.replaceConref(authorAccess);
+                    } else {
+                         errorCount++;
                     }
                 });
             }
@@ -80,6 +83,7 @@ function expandRefs(authorAccess) {
                 Packages.java.lang.System.err.println(ex);
             }
         }
+        expandRefs(authorAccess, errorCount);
     }
     //Resolve also keyrefs
     keyrefNodes = authorAccess.getDocumentController().findNodesByXPath("//*[@keyref]", true, true, true);
