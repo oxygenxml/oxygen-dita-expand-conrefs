@@ -58,11 +58,22 @@ function applicationClosing(pluginWorkspaceAccess) {
 function expandRefs(authorAccess) {
     allNodes = authorAccess.getDocumentController().findNodesByXPath("//*[@conref or @conkeyref]", true, true, true);
     if (allNodes != null) {
-        for (i = 0; i < allNodes.length; i++) {
+        for (var i = 0; i < allNodes.length; i++) {
             try {
                 javax.swing.SwingUtilities.invokeAndWait(function () {
-                    authorAccess.getEditorAccess().setCaretPosition(allNodes[i].getStartOffset() + 1);
-                    Packages.ro.sync.ecss.dita.DITAAccess.replaceConref(authorAccess);
+                    var isError = false;
+                    var contentNodes = allNodes[i].getContentNodes();
+                    for (var j = 0; j < contentNodes.size(); j++) {
+                        var currentContentNode = contentNodes.get(j);
+                        if (currentContentNode instanceof Packages.ro.sync.ecss.dom.AuthorErrorNodeImpl) {
+                            isError = true;
+                        }
+                    }
+                    
+                    if (! isError) {
+                        authorAccess.getEditorAccess().setCaretPosition(allNodes[i].getStartOffset() + 1);
+                        Packages.ro.sync.ecss.dita.DITAAccess.replaceConref(authorAccess);
+                    }
                 });
             }
             catch (ex) {
