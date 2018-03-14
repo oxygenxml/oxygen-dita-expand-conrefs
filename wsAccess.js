@@ -42,7 +42,6 @@ function applicationStarted(pluginWorkspaceAccess) {
             }
         }
     }
-    
     pluginWorkspaceAccess.addMenusAndToolbarsContributorCustomizer(new Packages.ro.sync.exml.workspace.api.standalone.actions.MenusAndToolbarsContributorCustomizer(menuContributor));
 }
 
@@ -56,30 +55,48 @@ function applicationClosing(pluginWorkspaceAccess) {
  *
  */
 function expandRefs(authorAccess, errors) {
-    allNodes = authorAccess.getDocumentController().findNodesByXPath("//*[@conref or @conkeyref]", true, true, true);
+    var controller = authorAccess.getDocumentController();
+    allNodes = controller.findNodesByXPath("//*[@conref or @conkeyref]", true, true, true);
+    var root = controller.getAuthorDocumentNode().getRootElement();
+    Packages.java.lang.System.err.println("errors: " + errors);
+    Packages.java.lang.System.err.println("allNodes.length: " + allNodes.length);
+    
     if (allNodes != null && (allNodes.length > errors)) {
-        var errorCount = 0; 
+        var errorCount = 0;
         for (var i = 0; i < allNodes.length; i++) {
+            var replaceRoot = (allNodes[i].getStartOffset() <= root.getStartOffset()) && (allNodes[i].getEndOffset() >= root.getEndOffset());
             try {
                 javax.swing.SwingUtilities.invokeAndWait(function () {
                     var isError = false;
                     var contentNodes = allNodes[i].getContentNodes();
-                    for (var j = 0; j < contentNodes.size(); j++) {
-                        var currentContentNode = contentNodes.get(j);
-                        if ("#error".equals(currentContentNode.getName())) {
-                            isError = true;
+                    if (! contentNodes.isEmpty()) {
+                        for (var j = 0; j < contentNodes.size(); j++) {
+                            var currentContentNode = contentNodes.get(j);
+                            if ("#error".equals(currentContentNode.getName())) {
+                                isError = true;
+                            }
                         }
-                    }
-                    
-                    if (! isError) {
-                        authorAccess.getEditorAccess().setCaretPosition(allNodes[i].getStartOffset() + 1);
-                        Packages.ro.sync.ecss.dita.DITAAccess.replaceConref(authorAccess);
+                        
+                        if (! isError) {
+                            if (replaceRoot) {
+                                var startOffset = contentNodes. get (0).getStartOffset() + 1;
+                                var endOffset = contentNodes. get (0).getEndOffset() - 1;
+                                var fragment = controller.createDocumentFragment(startOffset, endOffset)
+                                controller.replaceRoot(fragment);
+                            } else {
+                                authorAccess.getEditorAccess().setCaretPosition(allNodes[i].getStartOffset() + 1);
+                                Packages.ro.sync.ecss.dita.DITAAccess.replaceConref(authorAccess);
+                            }
+                        } else {
+                            errorCount++;
+                        }
                     } else {
-                         errorCount++;
+                        errorCount++;
                     }
                 });
             }
             catch (ex) {
+                errorCount++;
                 Packages.java.lang.System.err.println(ex);
             }
         }
