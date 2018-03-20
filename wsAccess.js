@@ -4,9 +4,11 @@
 var menuItemName = "Expand all conrefs/keyrefs";
 
 /**
- * Aplication started.
+ * Application started.
  */
 function applicationStarted(pluginWorkspaceAccess) {
+	loadDitaTextResolverMethods(pluginWorkspaceAccess);
+	
     menuContributor = {
         customizeAuthorPopUpMenu: function (popUp, authorAccess) {
             try {
@@ -22,7 +24,8 @@ function applicationStarted(pluginWorkspaceAccess) {
                                     documentController.beginCompoundEdit();
                                 });
                                 // Expand all conrefs/keyrefs from the document.
-                                expandRefs(authorAccess, 0);
+                                expandConrefs(authorAccess, 0);
+                                expandKrefs(authorAccess);
                                 
                                 javax.swing.SwingUtilities.invokeAndWait(function () {
                                     documentController.endCompoundEdit();
@@ -46,22 +49,31 @@ function applicationStarted(pluginWorkspaceAccess) {
 }
 
 /**
- * Aplication closing.
+ * Application closing.
  */
 function applicationClosing(pluginWorkspaceAccess) {
 }
 
+
 /**
- *
+ * Expand conrefs from the current document.
+ * 
+ * @param authorAccess The access in author page.
+ * @param Number of invalid conrefs, that can't be expanded.
  */
-function expandRefs(authorAccess, errors) {
+function expandConrefs(authorAccess, invalidRefsSize) {
     var controller = authorAccess.getDocumentController();
-    allNodes = controller.findNodesByXPath("//*[@conref or @conkeyref]", true, true, true);
-    var root = controller.getAuthorDocumentNode().getRootElement();
-    Packages.java.lang.System.err.println("errors: " + errors);
-    Packages.java.lang.System.err.println("allNodes.length: " + allNodes.length);
+    // Find conrefs and conkeyrefs
+    var allNodes = null;
+    try {
+        allNodes = controller.findNodesByXPath("//*[@conref or @conkeyref]", true, true, true);
+    }
+    catch (e) {
+        Packages.java.lang.System.err.println(e1);
+    }
     
-    if (allNodes != null && (allNodes.length > errors)) {
+    var root = controller.getAuthorDocumentNode().getRootElement();
+    if (allNodes != null && (allNodes.length > invalidRefsSize)) {
         var errorCount = 0;
         for (var i = 0; i < allNodes.length; i++) {
             var replaceRoot = (allNodes[i].getStartOffset() <= root.getStartOffset()) && (allNodes[i].getEndOffset() >= root.getEndOffset());
@@ -71,12 +83,13 @@ function expandRefs(authorAccess, errors) {
                     var contentNodes = allNodes[i].getContentNodes();
                     if (! contentNodes.isEmpty()) {
                         for (var j = 0; j < contentNodes.size(); j++) {
-                            var currentContentNode = contentNodes.get(j);
+                            var currentContentNode = contentNodes. get (j);
                             if ("#error".equals(currentContentNode.getName())) {
                                 isError = true;
                             }
                         }
                         
+                        // Modify only the valid conrefs.
                         if (! isError) {
                             if (replaceRoot) {
                                 var startOffset = contentNodes. get (0).getStartOffset() + 1;
@@ -94,34 +107,130 @@ function expandRefs(authorAccess, errors) {
                         errorCount++;
                     }
                 });
-            }
-            catch (ex) {
+            } catch (ex) {
                 errorCount++;
                 Packages.java.lang.System.err.println(ex);
             }
         }
-        expandRefs(authorAccess, errorCount);
+        expandConrefs(authorAccess, errorCount);
     }
-    //Resolve also keyrefs
-    keyrefNodes = authorAccess.getDocumentController().findNodesByXPath("//*[@keyref]", true, true, true);
-    if (keyrefNodes != null) {
-        if (keyrefNodes.length > 0) {
-            resolver = new Packages.ro.sync.ecss.extensions.dita.link.DitaLinkTextResolver();
-            resolver.activated(authorAccess);
-            for (i = 0; i < keyrefNodes.length; i++) {
-                resolved = resolver.resolveReference(keyrefNodes[i]);
-                offset = keyrefNodes[i].getStartOffset();
-                try {
-                    javax.swing.SwingUtilities.invokeAndWait(function () {
-                        authorAccess.getDocumentController().deleteNode(keyrefNodes[i]);
-                        authorAccess.getDocumentController().insertText(offset, resolved);
-                    });
-                }
-                catch (ex) {
-                    Packages.java.lang.System.err.println(ex);
+}
+    
+
+/**
+ * Expand the keyfs from the current document. The keyrefs from xrefs are changed with hrefs.
+ */
+function expandKrefs(authorAccess){
+	var documentController = authorAccess.getDocumentController();
+    if (resolver != null && activatedMethod != null && resolveReferenceMethod != null && deactivedMethod != null) {
+        var keyrefNodes = null;
+        try {
+            keyrefNodes = documentController.findNodesByXPath("//*[@keyref]", true, true, true);
+        }
+        catch (e) {
+            Packages.java.lang.System.err.println(e1);
+        }
+        
+        if (keyrefNodes != null && keyrefNodes.length > 0) {
+            try {
+                activatedMethod.invoke(resolver, authorAccess);
+                for (i = 0; i < keyrefNodes.length; i++) {
+                	var currentNode = new JavaAdapter(Packages.ro.sync.ecss.extensions.api.node.AuthorElement, keyrefNodes[i]);
+                	var name = currentNode.getName();
+                	
+                	if ("xref".equals(name)) {
+                		// Change 'keyrefs' with 'hrefs' on 'xref' elements
+                		var keyrefVal = currentNode.getAttribute("keyref");
+
+                		var xmlBaseURL = currentNode.getXMLBaseURL();
+                		var keys = Packages.ro.sync.ecss.dita.DITAAccess.getKeys(xmlBaseURL, 
+                				Packages.ro.sync.ecss.dita.ContextKeyManager.getDefault());
+
+                		var value = keyrefVal.getValue();
+                		var keyInfo = keys.get(value);
+
+                		if(keyInfo != null && keyInfo.getHrefLocation() != null) {
+                			var hrefLocation = keyInfo.getHrefLocation();
+                			var relativeVal = Packages.ro.sync.util.URLUtil.makeRelative(xmlBaseURL, hrefLocation);
+
+                			try {
+                				javax.swing.SwingUtilities.invokeAndWait(function () {
+                					documentController.removeAttribute("keyref", currentNode);
+                					documentController.setAttribute("href", 
+                							new Packages.ro.sync.ecss.extensions.api.node.AttrValue(relativeVal),
+                							currentNode);
+                				});
+                			}
+                			catch (ex) {
+                				Packages.java.lang.System.err.println(ex);
+                			}
+                		}
+                    } else {
+                    	// Insert the text from the reference over the current node.
+                        resolved = resolveReferenceMethod.invoke(resolver, currentNode);
+                        offset = keyrefNodes[i].getStartOffset();
+                        try {
+                            javax.swing.SwingUtilities.invokeAndWait(function () {
+                            	documentController.deleteNode(keyrefNodes[i]);
+                            	documentController.insertText(offset, resolved);
+                            });
+                        }
+                        catch (ex) {
+                            Packages.java.lang.System.err.println(ex);
+                        }
+                    }
                 }
             }
-            resolver.deactivated(authorAccess);
+            catch (e) {
+                Packages.java.lang.System.err.println(e);
+            }
+            finally {
+                try {
+                    resolver.deactivated(authorAccess);
+                }
+                catch (e) {
+                    Packages.java.lang.System.err.println(e);
+                }
+            }
         }
     }
 }
+
+	/**
+	 * Load the DitaLinkTextResolver class from the dita.jar 
+	 * and store a instance and some methods as global variables. 
+	 */
+    function loadDitaTextResolverMethods(pluginWorkspaceAccess) {
+    	var classLoader = null;
+        try {
+        	// Create the dita jar path.
+            var frameworksPath = pluginWorkspaceAccess.getUtilAccess().expandEditorVariables("${frameworks}", null);
+            var ditaJarPath = Packages.ro.sync.util.URLUtil.makeAbsolute(frameworksPath, "dita/dita.jar");
+            var urls = Packages.java.lang.reflect.Array.newInstance(java.net.URL, 1);
+            urls[0] = new java.net.URL(ditaJarPath);
+            
+            // Load classes from dita.jar
+            classLoader = new Packages.java.net.URLClassLoader(urls, pluginWorkspaceAccess.getClass().getClassLoader());
+            var ditaLinkTextResolverClass = classLoader.loadClass("ro.sync.ecss.extensions.dita.link.DitaLinkTextResolver");
+            
+            // Create a instance of DitaLinkTextResolver and get some methods.
+            resolver = ditaLinkTextResolverClass.newInstance();
+            activatedMethod = ditaLinkTextResolverClass.getDeclaredMethod("activated", Packages.java.lang.Class.forName("ro.sync.ecss.extensions.api.AuthorAccess"));
+            deactivedMethod = ditaLinkTextResolverClass.getDeclaredMethod("deactivated",  Packages.java.lang.Class.forName("ro.sync.ecss.extensions.api.AuthorAccess"));
+            resolveReferenceMethod = ditaLinkTextResolverClass.getDeclaredMethod("resolveReference",  Packages.java.lang.Class.forName("ro.sync.ecss.extensions.api.node.AuthorNode"));
+        }
+        catch (e) {
+            Packages.java.lang.System.err.println(e);
+        }
+        finally {
+            if (classLoader != null) {
+                try {
+                	classLoader.close();
+                }
+                catch (e) {
+                    //Do nothing
+                }
+            }
+        }
+    }
+    
