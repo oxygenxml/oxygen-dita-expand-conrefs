@@ -1,7 +1,7 @@
 # Oxygen DITA Expand Conrefs and Keyrefs
-Expands all conrefs, keyrefs and conkeyrefs in a DITA topic with the resolved content.
+Expands all conrefs, keyrefs and conkeyrefs in a DITA topic replacing it with the resolved content.
 
-This kind of plugin might be useful if for example you have a DITA Topic document in which you want to expands all conrefs, keyrefs and conkeyrefs in order to publish as PDF.
+This kind of plugin might be useful if for example you have a DITA Topic document in which you want to expand all conrefs, keyrefs and conkeyrefs in order to publish it as PDF.
 
 ## Compatibility
 This add-on is compatible with Oxygen XML Editor (or XML Author) version 19.1 or higher. 
