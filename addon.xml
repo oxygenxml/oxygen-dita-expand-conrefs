@@ -13,11 +13,11 @@ https://www.oxygenxml.com/doc/versions/18.1/ug-editor/topics/packing-and-deployi
         <xt:name>DITA Expand Conrefs and Keyrefs</xt:name>
         <xt:description><html xmlns="http://www.w3.org/1999/xhtml">
                 <head>
-                    <title>Oxygen Expand Conrefs and Keyrefs</title>
+                    <title>Expand Conrefs and Keyrefs</title>
                 </head>
                 <body>
                 <div>
-                    <p>Expands all conrefs, keyrefs and conkeyrefs in a DITA topic with the resolved content.</p>
+                    <p>Expands all conrefs, keyrefs and conkeyrefs in a DITA topic replacing them with the resolved content.</p>
                     <p>For more details see: <a href="https://github.com/oxygenxml/oxygen-expand-conrefs-keyrefs">https://github.com/oxygenxml/oxygen-expand-conrefs-keyrefs</a></p>
                 </div>
             </body>
