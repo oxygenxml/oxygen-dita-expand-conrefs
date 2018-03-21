@@ -8,44 +8,34 @@ var menuItemName = "Expand all conrefs/keyrefs";
  */
 function applicationStarted(pluginWorkspaceAccess) {
 	loadDitaTextResolverMethods(pluginWorkspaceAccess);
-	
-    menuContributor = {
-        customizeAuthorPopUpMenu: function (popUp, authorAccess) {
-            try {
-                /*Create absolute reference*/
-                mi = new Packages.javax.swing.JMenuItem(menuItemName);
-                popUp.add(mi);
-                actionPerfObj = {
-                    actionPerformed: function (e) {
-                        var thread = java.lang.Thread(function () {
-                            try {
-                                var documentController = authorAccess.getDocumentController();
-                                javax.swing.SwingUtilities.invokeAndWait(function () {
-                                    documentController.beginCompoundEdit();
-                                });
-                                // Expand all conrefs/keyrefs from the document.
-                                expandConrefs(authorAccess, 0);
-                                expandKrefs(authorAccess);
-                                
-                                javax.swing.SwingUtilities.invokeAndWait(function () {
-                                    documentController.endCompoundEdit();
-                                });
-                            }
-                            catch (ex) {
-                                Packages.java.lang.System.err.println(ex);
-                            }
-                        });
-                        thread.start()
-                    }
-                }
-                mi.addActionListener(new JavaAdapter(Packages.java.awt.event.ActionListener, actionPerfObj));
-            }
-            catch (e1) {
-                Packages.java.lang.System.err.println(e1);
-            }
-        }
-    }
-    pluginWorkspaceAccess.addMenusAndToolbarsContributorCustomizer(new Packages.ro.sync.exml.workspace.api.standalone.actions.MenusAndToolbarsContributorCustomizer(menuContributor));
+
+	menuContributor = {
+			customizeAuthorPopUpMenu: function (popUp, authorAccess) {
+				try {
+					/*Create absolute reference*/
+					mi = new Packages.javax.swing.JMenuItem(menuItemName);
+					popUp.add(mi);
+					actionPerfObj = {
+							actionPerformed: function (e) {
+								var documentController = authorAccess.getDocumentController();
+								
+									documentController.beginCompoundEdit();
+									
+									// Expand all conrefs/keyrefs from the document.
+									expandConrefs(authorAccess, new Packages.java.util.HashSet());
+									expandKrefs(authorAccess);
+
+									documentController.endCompoundEdit();
+							}
+					}
+					mi.addActionListener(new JavaAdapter(Packages.java.awt.event.ActionListener, actionPerfObj));
+				}
+				catch (e1) {
+					Packages.java.lang.System.err.println(e1);
+				}
+			}
+	}
+	pluginWorkspaceAccess.addMenusAndToolbarsContributorCustomizer(new Packages.ro.sync.exml.workspace.api.standalone.actions.MenusAndToolbarsContributorCustomizer(menuContributor));
 }
 
 /**
@@ -61,7 +51,7 @@ function applicationClosing(pluginWorkspaceAccess) {
  * @param authorAccess The access in author page.
  * @param Number of invalid conrefs, that can't be expanded.
  */
-function expandConrefs(authorAccess, invalidRefsSize) {
+function expandConrefs(authorAccess, invalidConrefNodes) {
     var controller = authorAccess.getDocumentController();
     // Find conrefs and conkeyrefs
     var allNodes = null;
@@ -72,47 +62,48 @@ function expandConrefs(authorAccess, invalidRefsSize) {
         Packages.java.lang.System.err.println(e1);
     }
     
+    var conrefNodes = excludeInvalidNodes(allNodes, invalidConrefNodes);
+    var conrefNodesSize = conrefNodes.size();
+
     var root = controller.getAuthorDocumentNode().getRootElement();
-    if (allNodes != null && (allNodes.length > invalidRefsSize)) {
-        var errorCount = 0;
-        for (var i = 0; i < allNodes.length; i++) {
-            var replaceRoot = (allNodes[i].getStartOffset() <= root.getStartOffset()) && (allNodes[i].getEndOffset() >= root.getEndOffset());
+    if (conrefNodes != null && (conrefNodesSize > 0)) {
+    	for (var i = 0; i < conrefNodesSize; i++) {
+    		var currentNode = conrefNodes.get(i);
+            var replaceRoot = (currentNode.getStartOffset() <= root.getStartOffset()) && (currentNode.getEndOffset() >= root.getEndOffset());
             try {
-                javax.swing.SwingUtilities.invokeAndWait(function () {
-                    var isError = false;
-                    var contentNodes = allNodes[i].getContentNodes();
-                    if (! contentNodes.isEmpty()) {
-                        for (var j = 0; j < contentNodes.size(); j++) {
-                            var currentContentNode = contentNodes. get (j);
-                            if ("#error".equals(currentContentNode.getName())) {
-                                isError = true;
-                            }
-                        }
-                        
-                        // Modify only the valid conrefs.
-                        if (! isError) {
-                            if (replaceRoot) {
-                                var startOffset = contentNodes. get (0).getStartOffset() + 1;
-                                var endOffset = contentNodes. get (0).getEndOffset() - 1;
-                                var fragment = controller.createDocumentFragment(startOffset, endOffset)
-                                controller.replaceRoot(fragment);
-                            } else {
-                                authorAccess.getEditorAccess().setCaretPosition(allNodes[i].getStartOffset() + 1);
-                                Packages.ro.sync.ecss.dita.DITAAccess.replaceConref(authorAccess);
-                            }
-                        } else {
-                            errorCount++;
-                        }
-                    } else {
-                        errorCount++;
-                    }
-                });
+            	var isError = false;
+            	var contentNodes = currentNode.getContentNodes();
+            	if (! contentNodes.isEmpty()) {
+            		for (var j = 0; j < contentNodes.size(); j++) {
+            			var currentContentNode = contentNodes. get (j);
+            			if ("#error".equals(currentContentNode.getName())) {
+            				isError = true;
+            			}
+            		}
+
+            		// Modify only the valid conrefs.
+            		if (! isError) {
+            			if (replaceRoot) {
+            				var startOffset = contentNodes.get(0).getStartOffset() + 1;
+            				var endOffset = contentNodes.get(0).getEndOffset() - 1;
+            				var fragment = controller.createDocumentFragment(startOffset, endOffset);
+            				controller.replaceRoot(fragment);
+            			} else {
+            				authorAccess.getEditorAccess().setCaretPosition(currentNode.getStartOffset() + 1);
+            				Packages.ro.sync.ecss.dita.DITAAccess.replaceConref(authorAccess);
+            			}
+            		} else {
+            			invalidConrefNodes.add(currentNode);
+            		}
+            	} else {
+            		invalidConrefNodes.add(currentNode);
+            	}
             } catch (ex) {
-                errorCount++;
+            	invalidConrefNodes.add(currentNode);
                 Packages.java.lang.System.err.println(ex);
             }
         }
-        expandConrefs(authorAccess, errorCount);
+        expandConrefs(authorAccess, invalidConrefNodes);
     }
 }
     
@@ -136,10 +127,13 @@ function expandKrefs(authorAccess){
                 activatedMethod.invoke(resolver, authorAccess);
                 for (i = 0; i < keyrefNodes.length; i++) {
                 	var currentNode = new JavaAdapter(Packages.ro.sync.ecss.extensions.api.node.AuthorElement, keyrefNodes[i]);
-                	var name = currentNode.getName();
-                	
-                	if ("xref".equals(name)) {
-                		// Change 'keyrefs' with 'hrefs' on 'xref' elements
+                	var classStringVal = "";
+					var classVal = currentNode.getAttribute("class");
+					if(classVal != null) {
+						classStringVal = classVal.getValue();
+					}
+					if (classStringVal.contains(" topic/link ") || classStringVal.contains(" topic/xref ")) {
+                		// Change 'keyrefs' with 'hrefs' on 'xref' and 'link' elements
                 		var keyrefVal = currentNode.getAttribute("keyref");
 
                 		var xmlBaseURL = currentNode.getXMLBaseURL();
@@ -153,31 +147,17 @@ function expandKrefs(authorAccess){
                 			var hrefLocation = keyInfo.getHrefLocation();
                 			var relativeVal = Packages.ro.sync.util.URLUtil.makeRelative(xmlBaseURL, hrefLocation);
 
-                			try {
-                				javax.swing.SwingUtilities.invokeAndWait(function () {
-                					documentController.removeAttribute("keyref", currentNode);
-                					documentController.setAttribute("href", 
-                							new Packages.ro.sync.ecss.extensions.api.node.AttrValue(relativeVal),
-                							currentNode);
-                				});
-                			}
-                			catch (ex) {
-                				Packages.java.lang.System.err.println(ex);
-                			}
+                			documentController.removeAttribute("keyref", currentNode);
+                			documentController.setAttribute("href", 
+                					new Packages.ro.sync.ecss.extensions.api.node.AttrValue(relativeVal),
+                					currentNode);
                 		}
                     } else {
                     	// Insert the text from the reference over the current node.
                         resolved = resolveReferenceMethod.invoke(resolver, currentNode);
                         offset = keyrefNodes[i].getStartOffset();
-                        try {
-                            javax.swing.SwingUtilities.invokeAndWait(function () {
                             	documentController.deleteNode(keyrefNodes[i]);
                             	documentController.insertText(offset, resolved);
-                            });
-                        }
-                        catch (ex) {
-                            Packages.java.lang.System.err.println(ex);
-                        }
                     }
                 }
             }
@@ -195,6 +175,29 @@ function expandKrefs(authorAccess){
         }
     }
 }
+
+
+
+function excludeInvalidNodes(allNodes, invalidNodes) {
+	var toReturn = null;
+	if(allNodes != null) {
+		if(invalidNodes != null && !invalidNodes.isEmpty()) {
+		var lenght = allNodes.length;
+			toReturn = new Packages.java.util.ArrayList();
+			for (var i = 0; i < lenght; i++) {
+				var currentNode = allNodes[i];
+				if(!invalidNodes.contains(currentNode)) {
+					toReturn.add(currentNode);
+				}
+			}
+		} else {
+			toReturn = Packages.java.util.Arrays.asList(allNodes);
+		}
+	}
+	return toReturn;
+}
+
+
 
 	/**
 	 * Load the DitaLinkTextResolver class from the dita.jar 
