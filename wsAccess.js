@@ -64,7 +64,7 @@ function expandConrefs(authorAccess, invalidConrefNodes) {
 	var conrefNodes = excludeInvalidNodes(allNodes, invalidConrefNodes);
 
 	var root = controller.getAuthorDocumentNode().getRootElement();
-	if (conrefNodes != null && conrefNodes.isEmpty()) {
+	if (conrefNodes != null && !conrefNodes.isEmpty()) {
 		var conrefNodesSize = conrefNodes.size();
 		for (var i = 0; i < conrefNodesSize; i++) {
 			var currentNode = conrefNodes.get(i);
